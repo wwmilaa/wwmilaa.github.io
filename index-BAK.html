@@ -520,19 +520,19 @@
       <div class="works-grid">
 
         <div class="story-card"><span class="badge">Reels</span>
-          <video class="lazy-video" data-src="static/reels/reels-1-web.mp4" muted loop playsinline preload="none"></video>
+          <video src="static/reels/reels-1-web.mp4" autoplay muted loop playsinline></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <video class="lazy-video" data-src="static/reels/reels-2-web.mp4" muted loop playsinline preload="none"></video>
+          <video src="static/reels/reels-2-web.mp4" autoplay muted loop playsinline></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <video class="lazy-video" data-src="static/reels/reels-3-web.mp4" muted loop playsinline preload="none"></video>
+          <video src="static/reels/reels-3-web.mp4" autoplay muted loop playsinline></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <video class="lazy-video" data-src="static/reels/reels-4-web.mp4" muted loop playsinline preload="none"></video>
+          <video src="static/reels/reels-4-web.mp4" autoplay muted loop playsinline></video>
         </div>
       </div>
 
@@ -553,7 +553,7 @@
         </div>
 
         <div class="story-card"><span class="badge">Stories</span>
-          <video class="lazy-video" data-src="static/stories/stories-4-web.mp4" muted loop playsinline preload="none"></video>
+          <video src="static/stories/stories-4-web.mp4" autoplay muted loop playsinline></video>
         </div>
       </div>
 
@@ -667,27 +667,6 @@
   window.addEventListener('scroll', updateProgress, {passive:true});
   window.addEventListener('resize', updateProgress);
   updateProgress();
-
-  // Ленивая автозагрузка видео: файл начинает подгружаться и проигрываться сам,
-  // как только карточка приближается к экрану — без клика пользователя.
-  // Благодаря этому при первом заходе на сайт браузер не тянет все видео разом.
-  const lazyVideos = document.querySelectorAll('.lazy-video');
-  const videoObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const video = entry.target;
-      if (entry.isIntersecting) {
-        if (!video.src) {
-          video.src = video.dataset.src;
-          video.load();
-        }
-        video.play().catch(() => {});
-      } else {
-        video.pause();
-      }
-    });
-  }, { rootMargin: '300px 0px', threshold: 0.1 });
-
-  lazyVideos.forEach(video => videoObserver.observe(video));
 
   // Кнопка звука на видео (как в Instagram: старт без звука, включение по клику)
   document.querySelectorAll('.story-card video, .stata-card video').forEach(video => {
