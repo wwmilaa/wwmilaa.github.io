@@ -266,7 +266,7 @@
     display:grid; grid-template-columns:repeat(4,1fr); gap:18px;
   }
   @media (max-width:900px){ .works-grid{grid-template-columns:repeat(2,1fr);} }
-  @media (max-width:380px){ .works-grid{grid-template-columns:1fr;} }
+  @media (max-width:600px){ .works-grid{grid-template-columns:1fr; max-width:320px; margin:0 auto;} }
   .stata-grid{
     display:grid; grid-template-columns:repeat(2,1fr); gap:18px; max-width:520px;
   }
@@ -307,21 +307,35 @@
   .story-card video, .story-card img{
     width:100%; height:100%; object-fit:cover; display:block;
   }
+
+  /* ---------- YOUTUBE FACADE (превью + кнопка play, без автозапуска) ---------- */
   .yt-embed{
     width:100%; height:100%; position:relative; background:var(--lavender);
   }
   .yt-embed iframe{
     width:100%; height:100%; display:block; border:0;
   }
-  .sound-btn{
-    position:absolute; bottom:10px; right:10px; z-index:3;
-    width:34px; height:34px; border-radius:50%; border:none;
-    background:rgba(0,0,0,0.55); color:#fff; font-size:14px;
+  .yt-thumb{
+    width:100%; height:100%; object-fit:cover; display:block; cursor:pointer;
+  }
+  .yt-play{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:52px; height:52px; border-radius:50%; border:none;
+    background:rgba(0,0,0,0.55); color:#fff; font-size:18px;
     display:flex; align-items:center; justify-content:center;
-    cursor:pointer; transition:transform 0.2s ease, background 0.2s ease;
+    cursor:pointer; z-index:2; transition:transform 0.2s ease, background 0.2s ease;
     backdrop-filter:blur(2px);
   }
-  .sound-btn:hover{transform:scale(1.12); background:rgba(0,0,0,0.75);}
+  .yt-play:hover{transform:translate(-50%,-50%) scale(1.1); background:rgba(0,0,0,0.75);}
+  .yt-link{
+    position:absolute; bottom:10px; right:10px; z-index:3;
+    font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase;
+    text-decoration:none; color:var(--ink);
+    background:rgba(255,255,255,0.9); padding:5px 9px; border-radius:100px;
+    transition:transform 0.2s ease, background 0.2s ease;
+  }
+  .yt-link:hover{transform:translateY(-2px); background:#fff;}
+
   .story-card .placeholder{
     text-align:center; padding:16px; color:var(--ink-soft);
   }
@@ -437,8 +451,7 @@
           <p style="margin-top:16px;">Мои сильные стороны — сочетание креатива и аналитики, умение видеть, что зайдёт аудитории, и превращать обычный аккаунт в бренд.</p>
         </div>
         <div class="about-photo">
-          <!-- Замените на: <img src="ваше-фото.jpg" alt="Милена"> -->
-            <img src="static/fav/milena.JPG" alt="Milena photo">
+          <img src="static/fav/milena.JPG" alt="Milena photo">
         </div>
       </div>
 
@@ -546,7 +559,6 @@
       <p class="works-sub">Stories</p>
       <div class="works-grid">
         <div class="story-card"><span class="badge">Stories</span>
-          <!-- Замените на: <img src="ваш-файл.jpg" alt="Stories"> -->
           <img src="static/stories/stories-1.JPG" alt="Stories">
         </div>
 
@@ -597,10 +609,6 @@
         </div>
       </div>
 
-
-      <div class="works-note">
-        Как заполнить: положите ваши фото/видео в ту же папку, что и файл сайта, и замените строку-подсказку внутри нужной карточки на <code>&lt;video src="имя-файла.mp4" autoplay muted loop playsinline&gt;&lt;/video&gt;</code> для роликов или <code>&lt;img src="имя-файла.jpg"&gt;</code> для картинок.
-      </div>
     </div>
   </section>
 
@@ -674,28 +682,53 @@
   window.addEventListener('resize', updateProgress);
   updateProgress();
 
-  // Реелсы и Stories теперь встроены через YouTube (Unlisted) — так браузер
-  // получает адаптивный стриминг вместо тяжёлого файла целиком.
-  // Плеер вставляется в карточку только когда она приближается к экрану,
-  // а не все 5 сразу при открытии сайта.
-  const ytObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const el = entry.target;
-      if (entry.isIntersecting && !el.dataset.loaded) {
-        const id = el.dataset.videoId;
-        if (!id || id.startsWith('ВАШ_YOUTUBE_ID')) return; // заглушка ещё не заменена на реальный ID
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1&rel=0&playsinline=1`;
-        iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-        iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('title', 'video');
-        el.appendChild(iframe);
-        el.dataset.loaded = 'true';
-      }
-    });
-  }, { rootMargin: '400px 0px', threshold: 0.1 });
+  // Reels/Stories через YouTube: без автозапуска — показываем превью-картинку
+  // с кнопкой ▶, видео и звук включаются только по клику пользователя.
+  // Отдельная маленькая ссылка "YouTube ↗" — осознанный переход на сам YouTube,
+  // чтобы человек не попадал туда случайным тапом по плееру.
+  document.querySelectorAll('.yt-embed').forEach(el => {
+    const id = el.dataset.videoId;
+    if (!id) return;
 
-  document.querySelectorAll('.yt-embed').forEach(el => ytObserver.observe(el));
+    const thumb = document.createElement('img');
+    thumb.className = 'yt-thumb';
+    thumb.src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+    thumb.loading = 'lazy';
+    thumb.alt = '';
+
+    const playBtn = document.createElement('button');
+    playBtn.className = 'yt-play';
+    playBtn.type = 'button';
+    playBtn.setAttribute('aria-label', 'Воспроизвести видео');
+    playBtn.textContent = '▶';
+
+    const link = document.createElement('a');
+    link.className = 'yt-link';
+    link.href = `https://www.youtube.com/shorts/${id}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'YouTube ↗';
+    link.addEventListener('click', (e) => e.stopPropagation());
+
+    el.appendChild(thumb);
+    el.appendChild(playBtn);
+    el.appendChild(link);
+
+    const play = () => {
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1`;
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('title', 'video');
+      thumb.remove();
+      playBtn.remove();
+      link.remove();
+      el.appendChild(iframe);
+    };
+
+    thumb.addEventListener('click', play);
+    playBtn.addEventListener('click', play);
+  });
 </script>
 
 </body>
