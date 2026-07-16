@@ -307,12 +307,6 @@
   .story-card video, .story-card img{
     width:100%; height:100%; object-fit:cover; display:block;
   }
-  .yt-embed{
-    width:100%; height:100%; position:relative; background:var(--lavender);
-  }
-  .yt-embed iframe{
-    width:100%; height:100%; display:block; border:0;
-  }
   .sound-btn{
     position:absolute; bottom:10px; right:10px; z-index:3;
     width:34px; height:34px; border-radius:50%; border:none;
@@ -330,7 +324,7 @@
     font-family:'Space Mono',monospace; font-size:10.5px; margin-top:8px; line-height:1.5;
   }
   .story-card .badge{
-    position:absolute; top:10px; left:10px; z-index:4;
+    position:absolute; top:10px; left:10px;
     font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase;
     background:rgba(255,255,255,0.85); padding:4px 9px; border-radius:100px;
   }
@@ -526,19 +520,19 @@
       <div class="works-grid">
 
         <div class="story-card"><span class="badge">Reels</span>
-          <div class="yt-embed" data-video-id="https://youtube.com/shorts/cxjr63I5wTA?feature=share"></div>
+          <video class="lazy-video" data-src="static/reels/reels-1.mp4" muted loop playsinline preload="none"></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <div class="yt-embed" data-video-id="https://youtube.com/shorts/YUhtIZxGSnc?feature=share"></div>
+          <video class="lazy-video" data-src="static/reels/reels-2.mp4" muted loop playsinline preload="none"></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <div class="yt-embed" data-video-id="https://youtube.com/shorts/1ZL4veD04Ic?feature=share"></div>
+          <video class="lazy-video" data-src="static/reels/reels-3.mp4" muted loop playsinline preload="none"></video>
         </div>
 
         <div class="story-card"><span class="badge">Reels</span>
-          <div class="yt-embed" data-video-id="https://youtube.com/shorts/PRzosczSJ5g?feature=share"></div>
+          <video class="lazy-video" data-src="static/reels/reels-4.mp4" muted loop playsinline preload="none"></video>
         </div>
       </div>
 
@@ -559,7 +553,7 @@
         </div>
 
         <div class="story-card"><span class="badge">Stories</span>
-          <div class="yt-embed" data-video-id="https://youtube.com/shorts/8gEgt6Sd-a4?feature=share"></div>
+          <video class="lazy-video" data-src="static/stories/stories-4.mp4" muted loop playsinline preload="none"></video>
         </div>
       </div>
 
@@ -598,9 +592,6 @@
       </div>
 
 
-      <div class="works-note">
-        Как заполнить: положите ваши фото/видео в ту же папку, что и файл сайта, и замените строку-подсказку внутри нужной карточки на <code>&lt;video src="имя-файла.mp4" autoplay muted loop playsinline&gt;&lt;/video&gt;</code> для роликов или <code>&lt;img src="имя-файла.jpg"&gt;</code> для картинок.
-      </div>
     </div>
   </section>
 
@@ -674,28 +665,50 @@
   window.addEventListener('resize', updateProgress);
   updateProgress();
 
-  // Реелсы и Stories теперь встроены через YouTube (Unlisted) — так браузер
-  // получает адаптивный стриминг вместо тяжёлого файла целиком.
-  // Плеер вставляется в карточку только когда она приближается к экрану,
-  // а не все 5 сразу при открытии сайта.
-  const ytObserver = new IntersectionObserver((entries) => {
+  // Ленивая автозагрузка видео: файл начинает подгружаться и проигрываться сам,
+  // как только карточка приближается к экрану — без клика пользователя.
+  // Благодаря этому при первом заходе на сайт браузер не тянет все видео разом.
+  const lazyVideos = document.querySelectorAll('.lazy-video');
+  const videoObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const el = entry.target;
-      if (entry.isIntersecting && !el.dataset.loaded) {
-        const id = el.dataset.videoId;
-        if (!id || id.startsWith('ВАШ_YOUTUBE_ID')) return; // заглушка ещё не заменена на реальный ID
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1&rel=0&playsinline=1`;
-        iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-        iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('title', 'video');
-        el.appendChild(iframe);
-        el.dataset.loaded = 'true';
+      const video = entry.target;
+      if (entry.isIntersecting) {
+        if (!video.src) {
+          video.src = video.dataset.src;
+          video.load();
+        }
+        video.play().catch(() => {});
+      } else {
+        video.pause();
       }
     });
-  }, { rootMargin: '400px 0px', threshold: 0.1 });
+  }, { rootMargin: '300px 0px', threshold: 0.1 });
 
-  document.querySelectorAll('.yt-embed').forEach(el => ytObserver.observe(el));
+  lazyVideos.forEach(video => videoObserver.observe(video));
+
+  // Кнопка звука на видео (как в Instagram: старт без звука, включение по клику)
+  document.querySelectorAll('.story-card video, .stata-card video').forEach(video => {
+    const card = video.closest('.story-card, .stata-card');
+    if(!card) return;
+    video.muted = true;
+    video.setAttribute('playsinline','');
+
+    const btn = document.createElement('button');
+    btn.className = 'sound-btn';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Включить звук');
+    btn.textContent = '🔇';
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      video.muted = !video.muted;
+      btn.textContent = video.muted ? '🔇' : '🔊';
+      btn.setAttribute('aria-label', video.muted ? 'Включить звук' : 'Выключить звук');
+      if(!video.muted){ video.play().catch(()=>{}); }
+    });
+
+    card.appendChild(btn);
+  });
 </script>
 
 </body>
